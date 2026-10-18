@@ -1,0 +1,19 @@
+{
+  "name": "warehouse-inventory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cover": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.2",
+    "@ubccpsc/210-toolkit": "0.0.10",
+    "@vitest/coverage-v8": "4.1.10",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}
