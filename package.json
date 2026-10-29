@@ -7,7 +7,8 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:cover": "vitest run --coverage"
+    "test:cover": "vitest run --coverage",
+    "start": "pnpm build && node dist/src/start.js"
   },
   "devDependencies": {
     "@types/node": "25.6.2",
