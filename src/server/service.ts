@@ -6,7 +6,9 @@ import { fail, respond, type HttpResponse } from "./framework/router.js";
 
 type Change =
 	| { kind: "add"; product: ProductData }
-	| { kind: "remove"; id: string };
+	| { kind: "remove"; id: string }
+	| { kind: "stock"; id: string; direction: string; quantity: number }
+	| { kind: "price"; id: string; price: number };
 
 /** Coordinates the inventory and its file. Only committed changes are visible.
  * The promise queue prevents overlapping writes in this server process. */
@@ -51,10 +53,7 @@ export class AppService {
 			return fail(500, "INTERNAL_MODEL_ERROR");
 		}
 		const candidate: Inventory = restored.value;
-		const result: Result<ProductData, string> =
-			action.kind === "add"
-				? candidate.addProduct(action.product)
-				: candidate.removeProduct(action.id);
+		const result: Result<ProductData, string> = applyChange(candidate, action);
 		if (!result.ok) {
 			return fail(errorStatus(result.error), result.error);
 		}
@@ -100,4 +99,25 @@ export async function startService(savePath: string): Promise<AppService> {
 		throw new Error("LOAD_FAILED: " + loaded.error);
 	}
 	return new AppService(loaded.value, savePath);
+}
+
+/** Routes a validated command to the model; persistence is shared by all changes. */
+function applyChange(
+	inventory: Inventory,
+	action: Change,
+): Result<ProductData, string> {
+	switch (action.kind) {
+		case "add":
+			return inventory.addProduct(action.product);
+		case "remove":
+			return inventory.removeProduct(action.id);
+		case "stock":
+			return inventory.adjustStock(
+				action.id,
+				action.direction,
+				action.quantity,
+			);
+		case "price":
+			return inventory.updatePrice(action.id, action.price);
+	}
 }

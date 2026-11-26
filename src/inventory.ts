@@ -57,6 +57,67 @@ export class Inventory {
 			.map((p: Product): ProductData => p.toJSON());
 		return ok({ products, count: products.length });
 	}
+	/** Records incoming or outgoing units. Quantity must be a positive safe integer.
+	 * Returns PRODUCT_NOT_FOUND, INVALID_ADJUSTMENT, INSUFFICIENT_STOCK or
+	 * INVALID_STOCK without mutation. Success preserves all other fields.
+	 */
+	public adjustStock(
+		id: string,
+		direction: string,
+		quantity: number,
+	): Result<ProductData, string> {
+		const index: number = this.products.findIndex(
+			(product: Product): boolean => product.id === id.trim(),
+		);
+		if (index < 0) {
+			return err("PRODUCT_NOT_FOUND");
+		}
+		if (
+			(direction !== "in" && direction !== "out") ||
+			!Number.isSafeInteger(quantity) ||
+			quantity <= 0
+		) {
+			return err("INVALID_ADJUSTMENT");
+		}
+		const current: Product = this.products[index];
+		const stock: number =
+			direction === "in" ? current.stock + quantity : current.stock - quantity;
+		if (stock < 0) {
+			return err("INSUFFICIENT_STOCK");
+		}
+		return this.replaceProduct(index, { ...current.toJSON(), stock });
+	}
+
+	/** Changes only unit price. Missing IDs or invalid prices return an error;
+	 * failure leaves this inventory unchanged.
+	 */
+	public updatePrice(id: string, price: number): Result<ProductData, string> {
+		const index: number = this.products.findIndex(
+			(product: Product): boolean => product.id === id.trim(),
+		);
+		if (index < 0) {
+			return err("PRODUCT_NOT_FOUND");
+		}
+		return this.replaceProduct(index, {
+			...this.products[index].toJSON(),
+			price,
+		});
+	}
+
+	/** Revalidates a replacement before publishing it; IDs remain unchanged. */
+	private replaceProduct(
+		index: number,
+		data: ProductData,
+	): Result<ProductData, string> {
+		try {
+			const replacement: Product = parseProduct(data);
+			this.products[index] = replacement;
+			return ok(replacement.toJSON());
+		} catch (error) {
+			return err((error as Error).message);
+		}
+	}
+
 	/** Returns a detached, insertion-ordered snapshot suitable for JSON storage. */
 	public toJSON(): { products: ProductData[] } {
 		return {

@@ -1,210 +1,231 @@
-# Warehouse Inventory Management
+# Stockroom — Warehouse Inventory Management
 
-A TypeScript application for small-warehouse staff to manage product records, view stock, identify replenishment needs, and remove products they no longer track. Each product has a unique ID, name, unit price, and stock quantity.
+A TypeScript application for small-warehouse staff to maintain product records, inspect inventory, identify replenishment needs, and record stock and price changes. Each product has a unique ID, name, unit price, and stock quantity. Phase 3 extends the Phase 2 model and REST backend with a browser frontend.
 
-Phase 2 builds on the Phase 1 model with classes, a REST backend, and JSON persistence. Stories 1–6 are implemented. Stories 7–8 are planned for Phase 3, together with a browser frontend.
+The browser frontend and REST API share one server. All eight stories below are implemented; successful changes save automatically, and startup restores the saved inventory. This repository is a tutor's teaching example. Students should select their own domain and understand their own implementation.
 
-## Getting Started
+## Project Preview
 
-Use Node.js 22 or later and pnpm:
+### Inventory at a glance
+
+View products, sort by name, and manage stock and prices from one workspace. Accepted changes are saved automatically and restored after a server restart.
+
+![Product inventory with stock quantities, unit prices, and management actions](docs/screenshots/inventory.png)
+
+### Find products that need restocking
+
+Filter by a stock threshold and see the matching products and count.
+
+![Low-stock filter showing products below the selected threshold](docs/screenshots/low-stock.png)
+
+### Clear feedback when a change is refused
+
+Receive or withdraw stock, update unit prices, and confirm product removal. Invalid changes show a readable message and preserve the recorded inventory.
+
+![Stock adjustment dialog refusing a withdrawal that exceeds available stock](docs/screenshots/stock-validation.png)
+
+<details>
+<summary>Mobile layout</summary>
+
+Product cards keep stock, prices, and management actions accessible on smaller screens.
+
+<img src="docs/screenshots/mobile.png" alt="Mobile inventory layout with product cards and management buttons" width="360">
+
+</details>
+
+## Run the Application
+
+Use Node.js 22 or later and pnpm. Run these commands **from the repository root** (the directory containing `package.json`):
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm build
-pnpm test
-pnpm test:cover
 pnpm start
 ```
 
-The backend listens on port 3000 and saves to `data/inventory.json` by default. Set `PORT` and `INVENTORY_FILE` to override these values. Relative file paths are resolved from the working directory. There is no browser interface yet.
+Open **http://localhost:3000/**, including the trailing slash. `pnpm start` type-checks the project, bundles browser TypeScript into `public/app.js`, watches it for changes, and starts the page and API. Reload the page after editing frontend code. Server code changes require a restart.
 
 ```sh
-curl -X POST http://localhost:3000/products \
-  -H 'Content-Type: application/json' \
-  -d '{"id":"P1","name":"Apple","price":2.5,"stock":5}'
-
-curl 'http://localhost:3000/products?direction=ascending'
-curl 'http://localhost:3000/products/low-stock?threshold=10'
-curl -X DELETE http://localhost:3000/products/P1
+pnpm build
+pnpm test
+pnpm test:cover
 ```
 
-See [API.md](API.md) for request bodies, query parameters, responses, and errors.
+`PORT` overrides port 3000. `INVENTORY_FILE` overrides the default `data/inventory.json`. Relative file paths use the working directory. `pnpm-workspace.yaml` permits the esbuild installation script; `esbuild` and `jsdom` are development tools with TypeScript support, not application features.
+
+The page starts empty if there is no save file. Add a product using **Add product**, then use its **Adjust stock**, **Edit price**, or **Remove** buttons. Use **Show low stock**, **Show all**, and the name sort menu to explore the collection. **Reload inventory** fetches the current server records. Unit prices use the `$` display convention without currency conversion. No sample records are silently inserted.
 
 ## User Interview
 
-Not completed. This teaching example does not claim a user interview or interview feedback. Students should develop their own project ideas and document their own interviews.
+Not completed. This teaching example does not claim a real interview or interview feedback.
 
 ## User Stories
 
-The priority order establishes product records, makes them visible, identifies replenishment needs, enables removal, and then preserves accepted changes across restarts.
+Priority: establish records, inspect them, identify restocking needs, remove obsolete records, preserve accepted work, restore it, then maintain quantities and prices. Stories 1–6 retain Phase 2 behaviour; Stories 7–8 are implemented in this phase.
 
 ### Story 1: Add a Product
 
 #### Statement
 
-As a warehouse worker, I want to add a product to the inventory, so that I can track its price and stock quantity.
+As a warehouse worker, I want to add a product to inventory, so that I can track its price and stock quantity.
 
 #### Success Criteria
 
-- **Given** no product uses the supplied ID, **when** I add a product with a nonempty ID and name, a finite nonnegative price, and a nonnegative safe-integer stock quantity, **then** the product is added with that information, after surrounding whitespace is removed from its ID and name.
+- **Given** no product uses the supplied ID, **when** I add a product with a nonempty ID/name, a finite nonnegative price, and a nonnegative safe-integer stock quantity, **then** the product is added and saved after surrounding whitespace is removed from its ID and name.
 
 #### Error Criteria
 
-- **Given** the normalized ID already exists, **when** I add another product with that ID, **then** a duplicate-ID error is returned and the inventory remains unchanged.
-- **Given** product information violates a validation rule, **when** I try to create or add it, **then** a validation error is returned and existing inventory data remains unchanged.
+- **Given** the normalized ID already exists, **when** I add another product with that ID, **then** a duplicate-ID error appears and inventory remains unchanged.
+- **Given** invalid product fields, **when** I submit them, **then** validation prevents the addition and explains the problem.
 
 ### Story 2: View Products
 
 #### Statement
 
-As a warehouse worker, I want to view products sorted by name, so that I can locate products and check their prices and stock quantities.
+As a warehouse worker, I want to view products sorted by name, so that I can find products and inspect their prices and quantities.
 
 #### Success Criteria
 
-- **Given** products exist, **when** I request ascending or descending name order, **then** all products and their four fields are returned in that order; equal names use ascending ID order in either direction.
-- **Given** an empty inventory, **when** I request a valid sort direction, **then** an empty list is returned.
-- **Given** any inventory, **when** I request a list, **then** stored data and insertion order remain unchanged.
+- **Given** products exist, **when** I choose name A–Z or Z–A, **then** every product and its four fields are displayed in that order, with equal names ordered by ascending ID.
+- **Given** an empty inventory, **when** I open or reload the page, **then** an empty-state message explains how to add the first product.
+- **Given** any inventory, **when** I list it, **then** stored data and insertion order are unchanged.
 
 #### Error Criteria
 
-- **Given** a direction other than `ascending` or `descending`, **when** I request the list, **then** an invalid-sort-direction error is returned.
+- **Given** an unsupported direction is sent to the API, **when** listing is requested, **then** it returns `400 INVALID_SORT_DIRECTION`.
+- **Given** the server is unavailable or returns an invalid body, **when** the page loads or reloads inventory, **then** a readable error is shown and no invalid records are rendered.
 
 ### Story 3: Identify Low-Stock Products
 
 #### Statement
 
-As a warehouse worker, I want to filter products by a stock threshold and see the matching count, so that I can identify products that may need replenishment.
+As a warehouse worker, I want to filter by a stock threshold and see the matching count, so that I can identify replenishment needs.
 
 #### Success Criteria
 
-- **Given** a nonnegative safe-integer threshold, **when** I request low-stock products, **then** exactly the products with stock strictly below that threshold are returned in insertion order, together with their count.
-- **Given** no matching products or an empty inventory, **when** I supply a valid threshold, **then** an empty list and a count of zero are returned.
-- **Given** any inventory, **when** I request low-stock products, **then** the inventory remains unchanged.
+- **Given** a nonnegative safe-integer threshold, **when** I choose Show low stock, **then** only products with stock strictly below that threshold appear, together with their count.
+- **Given** no matching records, **when** I filter, **then** the page shows zero matches and offers Show all.
+- **Given** filtered results, **when** I change name sort order, **then** only the display order changes; the low-stock API itself retains insertion order.
 
 #### Error Criteria
 
-- **Given** an invalid threshold, **when** I request low-stock products, **then** an invalid-threshold error is returned.
+- **Given** an invalid threshold, **when** I try to filter, **then** validation explains the problem and stored records remain unchanged.
 
 ### Story 4: Remove a Product
 
 #### Statement
 
-As a warehouse worker, I want to remove a product by ID, so that the inventory no longer contains products we have stopped tracking.
+As a warehouse worker, I want to remove a product by ID, so that inventory no longer contains records we have stopped tracking.
 
 #### Success Criteria
 
-- **Given** the product exists, **when** I remove it, **then** it is returned and removed while all other products remain unchanged.
+- **Given** a product exists, **when** I choose Remove and confirm the named product, **then** only that record is removed and the change is saved.
+- **Given** a removal dialog, **when** I choose Keep product, **then** nothing changes.
 
 #### Error Criteria
 
-- **Given** the product does not exist, **when** I try to remove it, **then** a product-not-found error is returned and the inventory remains unchanged.
+- **Given** the product has already been removed, **when** I confirm removal from a stale page, **then** a product-not-found message appears without changing other records.
 
 ### Story 5: Save Inventory Automatically
 
 #### Statement
 
-As a warehouse worker, I want accepted additions and removals saved automatically, so that confirmed changes survive a normal server restart.
+As a warehouse worker, I want accepted changes saved automatically, so that confirmed work survives a normal server restart.
 
 #### Success Criteria
 
-- **Given** a writable save path, **when** an addition or removal passes model validation, **then** the entire collection is saved in one JSON file before a success response is returned.
-- **Given** a request violates a model rule, **when** it returns a 4xx response, **then** neither memory nor the existing save file is changed by that request.
+- **Given** a writable save path, **when** an addition, removal, stock adjustment or price change succeeds, **then** the entire collection is saved before the success response and page confirmation.
+- **Given** a request rejected by the model, **when** an error is returned, **then** neither memory nor the file changes.
 
 #### Error Criteria
 
-- **Given** the file cannot be written, **when** a valid change is requested, **then** the server returns `500 { error: "SAVE_FAILED" }`, leaves the in-memory inventory unchanged, and does not report success.
+- **Given** an unwritable save path, **when** I submit a valid change, **then** a save error appears and in-memory state stays unchanged. HTTP status is 500, not a client error.
 
 ### Story 6: Restore Inventory at Startup
 
 #### Statement
 
-As a warehouse worker, I want saved inventory restored at startup, so that I can continue working with previously recorded products.
+As a warehouse worker, I want saved inventory restored at startup, so that I can continue using previous records.
 
 #### Success Criteria
 
-- **Given** a valid file containing unique product IDs, **when** the server restarts, **then** it loads the file once, GET returns the restored products, and duplicate IDs are still refused.
-- **Given** no save file exists, **when** the server starts, **then** it starts empty and GET returns an empty list.
+- **Given** valid saved products, **when** the server restarts and I reload the page, **then** the same records, quantities and prices appear.
+- **Given** no save file, **when** startup completes, **then** the page shows empty inventory.
 
 #### Error Criteria
 
-- **Given** an unreadable file, malformed JSON, invalid structure, or an invariant violation, **when** startup is attempted, **then** startup fails with an error before the HTTP listener starts, and the original file is not overwritten.
+- **Given** an unreadable, malformed or invariant-breaking file, **when** startup is attempted, **then** it fails with an error before listening, preserves the original file, and the page cannot falsely report an empty restored inventory.
 
-### Story 7: Adjust Stock — Planned for Phase 3
+### Story 7: Adjust Stock
 
 #### Statement
 
-As a warehouse worker, I want to record incoming and outgoing stock, so that recorded quantities reflect actual stock movements.
+As a warehouse worker, I want to record incoming and outgoing stock, so that recorded quantities reflect stock movements.
 
 #### Success Criteria
 
-- **Given** stock is 5, **when** 3 units arrive, **then** stock becomes 8 and is saved automatically.
-- **Given** stock is 5, **when** 2 units leave, **then** stock becomes 3 and is saved automatically.
+- **Given** stock is 5, **when** I receive 3 units through Adjust stock, **then** stock becomes 8 and is saved.
+- **Given** stock is 5, **when** I withdraw 2 units, **then** stock becomes 3 and is saved.
+- **Given** stock is 5, **when** I withdraw all 5 units, **then** stock becomes zero; other fields are unchanged.
 
 #### Error Criteria
 
-- **Given** stock is 5, **when** 6 units are requested for removal, **then** an error is returned and memory and saved data remain unchanged.
-- **Given** an unknown product or an adjustment quantity that is not a positive safe integer, **when** an adjustment is requested, **then** an error is returned without changing inventory.
+- **Given** stock is 5, **when** I request 6 units out, **then** an insufficient-stock message appears and memory and disk stay unchanged.
+- **Given** a missing product, invalid direction, nonpositive/fractional/unsafe quantity, or unsafe resulting stock, **when** adjustment is requested, **then** an error is returned without mutation.
 
-### Story 8: Update Unit Price — Planned for Phase 3
+### Story 8: Update Unit Price
 
 #### Statement
 
-As a warehouse worker, I want to update an existing product's unit price, so that its record reflects current pricing.
+As a warehouse worker, I want to update a product's unit price, so that the record reflects current pricing.
 
 #### Success Criteria
 
-- **Given** a product exists, **when** a finite nonnegative new price is supplied, **then** only its price changes and is saved automatically; its ID, name, and stock remain unchanged.
+- **Given** a product exists, **when** I save a finite nonnegative price through Edit price, **then** only that price changes and is saved; zero is allowed.
 
 #### Error Criteria
 
-- **Given** an unknown product or a price that is not finite and nonnegative, **when** a price change is requested, **then** an error is returned and memory and saved data remain unchanged.
+- **Given** an unknown product or invalid price, **when** a change is requested, **then** an error appears and memory and disk stay unchanged.
 
-## Design
+## Tests and API
 
-- `src/product.ts`: immutable `Product` class with private state, constructor validation, and detached data records.
-- `src/inventory.ts`: `Inventory` class with a private product array, mutation methods, sorted listing, low-stock reports, and validated restoration.
-- `src/result.ts`: success/error union and helper functions.
-- `src/server/service.ts`: `AppService` coordinates inventory changes, persistence, and startup restoration.
-- `src/server/handlers.ts` and `routes.ts`: translate HTTP requests into operations and responses.
-- `src/server/persistence.ts`: JSON file helpers supplied with the Phase 2 instructions.
-- `src/server/framework/`: course-provided router and HTTP listener.
-- `src/start.ts`: starts the service and listener.
+[API.md](API.md) documents all six API endpoints. `test/inventory.test.ts` and `test/backend.test.ts` retain the Phase 2 regression suite; `test/changes.test.ts` checks Stories 7–8 through dispatch, including validation, 4xx errors, write failure, concurrency and restart restoration. Every persistence test owns and cleans up a temporary directory.
 
-The collection invariant is that all products are valid and no two share the same normalized, case-sensitive ID. IDs and names are trimmed. Stock and thresholds must be nonnegative safe integers, and prices must be finite and nonnegative. Sorting uses case-sensitive string order rather than locale-specific collation. Stock equal to the threshold is not low stock.
+Optional browser tests are included: `test/client.test.ts` checks the API boundary and pure formatting; `test/dashboard.test.ts` uses jsdom and the real dispatch path to exercise the page. Assertions follow the textbook's Chai style. Coverage thresholds apply to our backend/model, excluding the course framework, startup entry point and optional browser layer; browser tests run as part of the normal suite.
 
-The two derived operations are sorted listing and low-stock filtering/counting. The model documents and tests errors such as duplicate IDs, missing products, invalid sorting, invalid thresholds, and invalid saved data. Constructors establish invariants, methods preserve them, and query results do not expose internal state. Tests use the textbook's Chai assertion style.
+The supplied router/listener remain in `src/server/framework/`; [FRAMEWORK.md](FRAMEWORK.md) retains the course framework reference and its original tide examples. Persistence helpers follow the Phase 2 handout. The frontend is newly written for this inventory domain and uses native DOM APIs rather than a UI framework.
 
-## Persistence
+[DEV.md](DEV.md) explains startup, development, and persistence checks. Data files, installed packages, generated bundles, build output and coverage reports are ignored by Git.
 
-The save file contains the complete collection:
+## Final Design
 
-```json
-{
-  "products": [
-    { "id": "P1", "name": "Apple", "price": 2.5, "stock": 5 }
-  ]
-}
+### Main classes and dependencies
+
+`Product` validates and privately stores one immutable record. `Inventory` owns a private `Product[]` and preserves valid records and unique normalized IDs. Its public operations include `addProduct`, `removeProduct`, `listProducts`, `findLowStock`, `adjustStock` and `updatePrice`. Changed products are revalidated before replacement; callers receive detached data.
+
+`AppService` owns an `Inventory`, a save path and a promise queue. Its `change` method serializes modifications, applies each to a candidate collection, writes the full snapshot, and publishes it only after saving. `startService` checks saved unknown data through constructors and collection operations before returning a service. Routes map six HTTP endpoints to handlers, which validate inputs and translate errors to JSON responses. The model does not depend on HTTP or filesystem APIs.
+
+`HttpInventoryApi` implements the `InventoryApi` interface. Its six methods alone call fetch, build relative URLs, convert HTTP/network failures to `Result`, and validate successful JSON bodies. `InventoryDashboard` receives that interface in its constructor, owns DOM elements and transient filter/busy state, and wires forms and table actions to the API. Pure functions in `view/products.ts` handle sorting, prices and error wording separately. `browser.ts` supplies the real client; tests supply fetch backed by dispatch. Browser imports of model DTOs are type-only, so model implementations are not bundled into the page.
+
+```text
+browser.ts -> InventoryDashboard -> InventoryApi <- HttpInventoryApi -> fetch
+                      |                                  |
+                 view functions                     relative HTTP
+                                                         |
+               course router -> handlers -> AppService -> Inventory -> Product
+                                                |
+                                          JSON file helpers
 ```
 
-There are no save or load endpoints. Successful additions and removals save automatically. Startup reads the file once, checks its shape, and rebuilds through constructors and collection operations rather than assigning untrusted data directly into private fields.
+### Strengths
 
-State-changing requests are processed sequentially within one server process. Each change is validated on a separate candidate collection, saved, and only then published as current state. A save failure leaves in-memory state unchanged. Reads during a save see the last committed state. Run only one server process per save file.
+1. **The page can evolve independently of transport.** `InventoryDashboard` depends on `InventoryApi`, not the concrete HTTP client or server classes. A different transport or fake API can implement the same contract without rewriting forms. HTTP paths and unknown-response validation are contained in `HttpInventoryApi`.
+2. **Business rules have one owner.** `Product` and `Inventory` enforce the same invariants for requests and restored files. Adding a stricter stock rule can be implemented and tested there rather than duplicated in handlers, persistence and rendering. Detached results prevent accidental mutation through page-facing records.
+3. **Persistence is shared across changes.** Stories 7–8 reuse `AppService.change` and its candidate/save/publish flow. A failed save cannot be mistaken for a committed in-memory change; the queue prevents overlapping mutations from losing updates within one process.
 
-The supplied file helper writes directly to the file and is not crash-atomic. An interrupted write can leave damaged data; startup refuses such data rather than silently clearing it. This is a teaching backend, not a transactional database.
+### Weaknesses and improvements
 
-Persistence failure responses follow the specific Phase 2 rules: request errors return 4xx, save failures return 500, and invalid startup files prevent startup. A startup failure has no HTTP response because the listener has not started.
+1. **Storage limits future scale and durability.** `AppService` names the JSON helpers and `Inventory` class directly and rewrites the entire snapshot for every modification. Supporting a database, multiple server processes, or very large inventories would require changing it. Introduce an injected `InventoryRepository` contract and transactional implementation; for continued file storage, use atomic replacement and explicit locking. Current direct writes are not crash-atomic.
+2. **The dashboard concentrates several workflows.** `InventoryDashboard` owns the table, filtering and four dialogs. Adding categories, bulk editing or additional screens would enlarge its event wiring and state handling. Split dialogs and the product table into cohesive controllers receiving the same narrow API contract, keeping shared page refresh coordination explicit.
+3. **Error contracts use strings and field validation is repeated at boundaries.** Adding a field or new error requires coordinated model/client/view changes; a typo can fall through to a raw code. Introduce shared discriminated error types and small DTO schema validators, while retaining validation on both untrusted boundaries rather than trusting the server blindly.
 
-## Testing
-
-```sh
-pnpm build
-pnpm test:cover
-```
-
-Model tests cover construction, validation, uniqueness, sorting, removal, low-stock boundaries, failure state preservation, and detached query results. Backend tests call `dispatch` directly and use an independent temporary directory for each test. They cover the six implemented stories, restarts, invalid saved data, write failures, and overlapping requests.
-
-Coverage excludes the supplied framework and the startup entry point. The HTML report is generated in `coverage/index.html`. Dependencies, build output, coverage reports, and runtime inventory files are ignored by Git.
-
-## Framework Attribution
-
-The router and HTTP listener are the course framework supplied in Lab 4. Relative imports use `.js` extensions for NodeNext compatibility. No Lab 4 business model or business handler is included. [FRAMEWORK.md](FRAMEWORK.md) documents the framework and includes its original tide-service examples; this project's tests call `dispatch` directly. The persistence helpers follow the Phase 2 handout.
+Current operational limits: a single server process per file, no authentication or per-user warehouses, and no automatic synchronization across open browser tabs. Reload fetches current data; stale operations can be rejected and shown to the user. A future multi-user version needs authentication, ownership, and version/conflict checks before deployment.

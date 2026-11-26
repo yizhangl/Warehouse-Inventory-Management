@@ -4,3 +4,8 @@ coverage/
 .DS_Store
 
 data/
+
+public/app.js
+public/app.js.map
+
+artifacts/
