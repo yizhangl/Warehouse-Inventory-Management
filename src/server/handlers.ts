@@ -61,3 +61,50 @@ export function lowStock(
 	}
 	return respond(200, result.value);
 }
+
+/** PUT /products/:id/stock. Refuses malformed bodies before model validation. */
+export function adjustStock(
+	request: HttpRequest,
+	service: AppService,
+): HttpResponse | Promise<HttpResponse> {
+	const body: unknown = request.body;
+	if (
+		typeof body !== "object" ||
+		body === null ||
+		Array.isArray(body) ||
+		!("direction" in body) ||
+		typeof body.direction !== "string" ||
+		!("quantity" in body) ||
+		typeof body.quantity !== "number"
+	) {
+		return fail(400, "INVALID_STOCK_BODY");
+	}
+	return service.change({
+		kind: "stock",
+		id: request.params.id,
+		direction: body.direction,
+		quantity: body.quantity,
+	});
+}
+
+/** PUT /products/:id/price. Refuses malformed bodies before model validation. */
+export function updatePrice(
+	request: HttpRequest,
+	service: AppService,
+): HttpResponse | Promise<HttpResponse> {
+	const body: unknown = request.body;
+	if (
+		typeof body !== "object" ||
+		body === null ||
+		Array.isArray(body) ||
+		!("price" in body) ||
+		typeof body.price !== "number"
+	) {
+		return fail(400, "INVALID_PRICE_BODY");
+	}
+	return service.change({
+		kind: "price",
+		id: request.params.id,
+		price: body.price,
+	});
+}

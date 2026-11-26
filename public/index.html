@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173d36">
+  <title>Stockroom — Warehouse inventory</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">S</span> STOCKROOM <span class="brand-divider">/</span> <span class="brand-sub">Warehouse inventory</span></div><span class="workspace"><span class="dot"></span> Your warehouse</span></header>
+  <noscript><p>This application needs JavaScript to load inventory. Enable it, then reload the page.</p></noscript>
+  <main id="app">
+    <section class="heading"><div><p class="eyebrow">INVENTORY WORKSPACE</p><h1>A clear view of your stock.</h1><p class="intro">Keep products up to date. Spot what needs restocking.</p></div><button id="open-add" class="primary">＋ Add product</button></section>
+    <div id="notice" class="notice" role="status" aria-live="polite">Loading inventory…</div>
+    <section class="metrics" aria-label="Inventory overview">
+      <article><span>Total products</span><strong id="total-products">—</strong><small>Distinct products in your warehouse</small></article>
+      <article><span>Units in stock</span><strong id="total-units">—</strong><small>Total recorded across all products</small></article>
+      <article class="save-card"><span>Saved automatically</span><strong class="save-title">Ready for your next shift.</strong><small id="save-status">Loading saved inventory from the server…</small></article>
+    </section>
+    <section class="inventory-panel" aria-labelledby="inventory-title">
+      <div class="panel-heading"><div><h2 id="inventory-title">Product inventory <span id="result-count" class="count">0</span></h2><p id="list-description">All products in your warehouse.</p></div><button id="reload" class="secondary">↻ Reload inventory</button></div>
+      <div class="toolbar">
+        <form id="filter-form" class="filter-form"><label for="threshold">Low-stock threshold</label><div class="inline"><input id="threshold" name="threshold" type="number" min="0" step="1" value="10" required><button type="submit" class="secondary">Show low stock</button><button id="show-all" type="button" class="text-button">Show all</button></div><small>Shows products with stock strictly below this number.</small></form>
+        <label class="sort-label" for="sort">Sort by name<select id="sort"><option value="ascending">Name A–Z</option><option value="descending">Name Z–A</option></select></label>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th scope="col">Product</th><th scope="col">Product ID</th><th scope="col" class="number">Unit price</th><th scope="col" class="number">Stock</th><th scope="col" class="actions-heading">Manage</th></tr></thead><tbody id="product-rows"></tbody></table></div>
+      <div id="empty-state" class="empty-state" hidden><div class="empty-symbol" aria-hidden="true">▤</div><h3 id="empty-title">Your shelves start here.</h3><p id="empty-description">Add your first product to begin tracking inventory.</p></div>
+      <div class="panel-footer"><span id="view-note">All products</span><span>Changes are saved after every successful update.</span></div>
+    </section>
+    <footer class="page-footer"><span>STOCKROOM · A place for every product.</span><span>Reload after a server restart to restore your saved records.</span></footer>
+  </main>
+
+  <dialog id="add-dialog" aria-labelledby="add-title"><form id="add-form">
+    <div class="dialog-heading"><div><p class="eyebrow">NEW RECORD</p><h2 id="add-title">Add a product</h2></div><button type="button" data-close="add-dialog" class="close" aria-label="Close add product">×</button></div>
+    <p class="dialog-intro">Give each product a unique ID to keep your inventory organized.</p>
+    <label for="product-id">Product ID<input id="product-id" name="id" placeholder="e.g. P001" required></label>
+    <label for="product-name">Product name<input id="product-name" name="name" placeholder="e.g. Packing tape" required></label>
+    <div class="form-grid"><label for="product-price">Unit price ($)<input id="product-price" name="price" type="number" min="0" step="any" placeholder="0.00" required></label><label for="product-stock">Initial stock<input id="product-stock" name="stock" type="number" min="0" step="1" placeholder="0" required></label></div>
+    <p id="add-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-footer"><button type="button" class="secondary" data-close="add-dialog">Cancel</button><button type="submit" class="primary">Add &amp; save product</button></div>
+  </form></dialog>
+
+  <dialog id="stock-dialog" aria-labelledby="stock-title"><form id="stock-form">
+    <div class="dialog-heading"><div><p class="eyebrow">STOCK MOVEMENT</p><h2 id="stock-title">Adjust stock</h2></div><button type="button" data-close="stock-dialog" class="close" aria-label="Close adjust stock">×</button></div>
+    <p id="stock-context" class="dialog-intro"></p><input id="stock-id" type="hidden">
+    <label for="stock-direction">Movement<select id="stock-direction"><option value="in">Stock in — receive units</option><option value="out">Stock out — withdraw units</option></select></label>
+    <label for="stock-quantity">Number of units<input id="stock-quantity" type="number" min="1" step="1" value="1" required></label>
+    <p id="stock-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-footer"><button type="button" class="secondary" data-close="stock-dialog">Cancel</button><button type="submit" class="primary">Save stock change</button></div>
+  </form></dialog>
+
+  <dialog id="price-dialog" aria-labelledby="price-title"><form id="price-form">
+    <div class="dialog-heading"><div><p class="eyebrow">PRODUCT DETAILS</p><h2 id="price-title">Update unit price</h2></div><button type="button" data-close="price-dialog" class="close" aria-label="Close update price">×</button></div>
+    <p id="price-context" class="dialog-intro"></p><input id="price-id" type="hidden">
+    <label for="new-price">New unit price ($)<input id="new-price" type="number" min="0" step="any" required></label>
+    <p id="price-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-footer"><button type="button" class="secondary" data-close="price-dialog">Cancel</button><button type="submit" class="primary">Save new price</button></div>
+  </form></dialog>
+
+  <dialog id="remove-dialog" aria-labelledby="remove-title"><form id="remove-form">
+    <div class="dialog-heading"><div><p class="eyebrow">REMOVE RECORD</p><h2 id="remove-title">Remove this product?</h2></div><button type="button" data-close="remove-dialog" class="close" aria-label="Close remove product">×</button></div>
+    <p id="remove-context" class="dialog-intro"></p><input id="remove-id" type="hidden"><p>This removes the product record from your warehouse. It does not record a stock withdrawal.</p>
+    <p id="remove-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-footer"><button type="button" class="secondary" data-close="remove-dialog">Keep product</button><button type="submit" class="danger">Remove &amp; save</button></div>
+  </form></dialog>
+</body>
+</html>
