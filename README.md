@@ -6,32 +6,9 @@ The browser frontend and REST API share one server. All eight stories below are 
 
 ## Project Preview
 
-### Inventory at a glance
+The walkthrough below shows adding products, sorting by name, filtering low stock, receiving stock, rejecting an excessive withdrawal, updating a unit price, and removing a product. Accepted changes are saved automatically.
 
-View products, sort by name, and manage stock and prices from one workspace. Accepted changes are saved automatically and restored after a server restart.
-
-![Product inventory with stock quantities, unit prices, and management actions](docs/screenshots/inventory.png)
-
-### Find products that need restocking
-
-Filter by a stock threshold and see the matching products and count.
-
-![Low-stock filter showing products below the selected threshold](docs/screenshots/low-stock.png)
-
-### Clear feedback when a change is refused
-
-Receive or withdraw stock, update unit prices, and confirm product removal. Invalid changes show a readable message and preserve the recorded inventory.
-
-![Stock adjustment dialog refusing a withdrawal that exceeds available stock](docs/screenshots/stock-validation.png)
-
-<details>
-<summary>Mobile layout</summary>
-
-Product cards keep stock, prices, and management actions accessible on smaller screens.
-
-<img src="docs/screenshots/mobile.png" alt="Mobile inventory layout with product cards and management buttons" width="360">
-
-</details>
+![Stockroom walkthrough: add products, sort and filter inventory, adjust stock, update prices, and remove a product](docs/features.gif)
 
 ## Run the Application
 
